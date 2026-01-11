@@ -44,9 +44,16 @@ public class PatientServiceImpl implements PatientService {
         
         PatientCreateDto result = modelMapper.map(patientEntity,PatientCreateDto.class);
         
-        // Publish Kafka event
-        kafkaEventProducer.publishPatientEvent(PatientEvent.EventType.PATIENT_CREATED, 
-            patientEntity.getId().toString(), result);
+        // Create and publish simple Kafka event
+        PatientEvent event = new PatientEvent();
+        event.setPatientId(patientEntity.getId().toString());
+        event.setPatientName(patientEntity.getPatientName());
+        event.setPatientCode(patientEntity.getPatientCode());
+        event.setAge(patientEntity.getAge());
+        event.setGender(patientEntity.getGender());
+        event.setEventType("CREATED");
+        
+        kafkaEventProducer.publishPatientCreated(event);
         
         return result;
     }
@@ -71,9 +78,15 @@ public class PatientServiceImpl implements PatientService {
                 .orElseThrow(()->new BadRequest("Patient not found" + patientName));
 
         // Publish Kafka event before deletion
-        PatientCreateDto patientDto = modelMapper.map(patientEntity, PatientCreateDto.class);
-        kafkaEventProducer.publishPatientEvent(PatientEvent.EventType.PATIENT_DELETED, 
-            patientEntity.getId().toString(), patientDto);
+        PatientEvent event = new PatientEvent();
+        event.setPatientId(patientEntity.getId().toString());
+        event.setPatientName(patientEntity.getPatientName());
+        event.setPatientCode(patientEntity.getPatientCode());
+        event.setAge(patientEntity.getAge());
+        event.setGender(patientEntity.getGender());
+        event.setEventType("DELETED");
+        
+        kafkaEventProducer.publishPatientCreated(event);
 
         patientRepo.delete(patientEntity);
     }

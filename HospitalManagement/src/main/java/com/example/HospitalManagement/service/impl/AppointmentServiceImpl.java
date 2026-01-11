@@ -73,9 +73,13 @@ public class AppointmentServiceImpl implements AppointmentService {
         
         AppointmentCreateDto result = modelMapper.map(appointmentEntity, AppointmentCreateDto.class);
         
-        // Publish Kafka event for appointment scheduling
-        kafkaEventProducer.publishPatientEvent(PatientEvent.EventType.APPOINTMENT_SCHEDULED, 
-            appointmentEntity.getId().toString(), result);
+        // Create and publish simple Kafka event
+        PatientEvent event = new PatientEvent();
+        event.setPatientId(appointmentEntity.getId().toString());
+        event.setPatientCode(appointmentEntity.getPatientCode());
+        event.setEventType("APPOINTMENT_SCHEDULED");
+        
+        kafkaEventProducer.publishAppointmentScheduled(event);
 
         return result;
     }
