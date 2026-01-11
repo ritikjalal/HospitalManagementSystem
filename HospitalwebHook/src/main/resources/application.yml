@@ -1,0 +1,104 @@
+spring:
+  application:
+    name: HospitalwebHook
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: hospital-webhook-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      properties:
+        spring.json.trusted.packages: com.example.HospitalwebHook.event
+
+webhook:
+  patient:
+    created:
+      url: ${WEBHOOK_PATIENT_CREATED_URL:http://localhost:8094/webhooks/test}
+    deleted:
+      url: ${WEBHOOK_PATIENT_DELETED_URL:http://localhost:8094/webhooks/test}
+  appointment:
+    scheduled:
+      url: ${WEBHOOK_APPOINTMENT_SCHEDULED_URL:http://localhost:8094/webhooks/test}
+
+server:
+  port: 8094
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,application/json,application/xml
+  tomcat:
+    max-threads: 100
+    max-connections: 4096
+    accept-count: 50
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env,configprops,beans,loggers
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    com.example.HospitalwebHook: INFO
+    org.springframework.kafka: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+  file:
+    name: logs/hospital-webhook.log
+    max-size: 100MB
+    max-history: 30
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+webhook:
+  patient:
+    created:
+      url: ${WEBHOOK_PATIENT_CREATED_URL:}
+    deleted:
+      url: ${WEBHOOK_PATIENT_DELETED_URL:}
+  appointment:
+    scheduled:
+      url: ${WEBHOOK_APPOINTMENT_SCHEDULED_URL:}
+
+logging:
+  level:
+    com.example.HospitalwebHook: WARN
+    org.springframework.kafka: WARN
+    root: WARN
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  kafka:
+    bootstrap-servers: localhost:9091

@@ -7,12 +7,14 @@ import com.example.HospitalManagement.entity.AppointmentEntity;
 import com.example.HospitalManagement.entity.BillingEntity;
 import com.example.HospitalManagement.entity.DoctorEntity;
 import com.example.HospitalManagement.entity.PatientEntity;
+import com.example.HospitalManagement.event.PatientEvent;
 import com.example.HospitalManagement.exception.BadRequest;
 import com.example.HospitalManagement.exception.ResourceException;
 import com.example.HospitalManagement.repo.AppointmentRepo;
 import com.example.HospitalManagement.repo.DoctorRepo;
 import com.example.HospitalManagement.repo.PatientRepo;
 import com.example.HospitalManagement.service.AppointmentService;
+import com.example.HospitalManagement.service.KafkaEventProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -31,6 +33,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     private final AppointmentRepo appointmentRepo;
     private final PatientRepo patientRepo;
     private final DoctorRepo doctorRepo;
+    private final KafkaEventProducer kafkaEventProducer;
 
 
     @Override
@@ -58,10 +61,8 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         log.info("creating appointment ");
 
-
         patientRepo.findByPatientCode(appointmentDto.getPatientCode()).orElseThrow(()->new ResourceException("patient with id not found "+appointmentDto.getPatientCode()));
         doctorRepo.findByDoctorCode(appointmentDto.getDoctorCode()).orElseThrow(()->new ResourceException("doctor with id not found "+appointmentDto.getDoctorCode()));
-
 
         AppointmentEntity appointmentEntity=modelMapper.map(appointmentDto, AppointmentEntity.class);
 
@@ -69,7 +70,13 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointmentEntity.setDoctorCode(appointmentDto.getDoctorCode());
 
         appointmentRepo.save(appointmentEntity);
+        
+        AppointmentCreateDto result = modelMapper.map(appointmentEntity, AppointmentCreateDto.class);
+        
+        // Publish Kafka event for appointment scheduling
+        kafkaEventProducer.publishPatientEvent(PatientEvent.EventType.APPOINTMENT_SCHEDULED, 
+            appointmentEntity.getId().toString(), result);
 
-        return modelMapper.map(appointmentEntity, AppointmentCreateDto.class);
+        return result;
     }
 }
